@@ -1,3 +1,5 @@
+# Zack Mitra
+
 import math, queue
 from collections import Counter
 
@@ -33,9 +35,16 @@ def make_huffman_tree(f):
     # greedily remove the two nodes x and y with lowest frequency,
     # create a new node z with x and y as children,
     # insert z into the priority queue (using an empty character "")
-    while (p.qsize() > 1):
-        # TODO
-        pass
+
+    while p.qsize() > 1:
+        x = p.get()
+        y = p.get()
+
+        combined_frequency = x.data[0] + y.data[0]
+
+        z = TreeNode(x, y, (combined_frequency, ""))
+
+        p.put(z)
         
     # return root of the tree
     return p.get()
@@ -47,20 +56,44 @@ def make_huffman_tree(f):
 # the value in the leaf to the encoding specified by prefix.
 # Return the code object.
 def get_code(node, prefix="", code={}):
-    # TODO - perform a tree traversal and collect encodings for leaves in code
-    pass
+    if code is None:
+        code = {}
+
+    if node.left is None and node.right is None:
+        character = node.data[1]
+        code[character] = prefix if prefix else "0"
+
+    else:
+        get_code(node.left, prefix + "0", code)
+        get_code(node.right, prefix + "1", code)
+
+    return code
 
 # Given an alphabet and frequencies, compute the cost of a fixed length encoding.
 # You'll have to consider the total number of unique elements in f to 
 # determine the number of bits needed to represent each character.
 def fixed_length_cost(f):
-    # TODO
-    pass
+    if len(f) == 0:
+        return 0
+
+    num_unique = len(f)
+    bits_per_char = math.ceil(math.log2(num_unique))
+    total_chars = sum(f.values())
+
+    return bits_per_char * total_chars
+
 
 # given a Huffman encoding and character frequencies, compute cost of a Huffman encoding
 def huffman_cost(C, f):
-    # TODO
-    pass
+    total_cost = 0
+
+    for char in f:
+        frequency = f[char]
+        code_length = len(C[char])
+
+        total_cost += frequency * code_length
+
+    return total_cost
 
 def analyze_files():
     for fname in ['alice29.txt', 'asyoulik.txt', 'f1.txt', 'fields.c', 'grammar.lsp']:
@@ -86,16 +119,92 @@ def MED(S, T):
         if (S[0] == T[0]):
             return(MED(S[1:], T[1:]))
         else:
-            return(1 + min(MED(S, T[1:]), MED(S[1:], T)))
+            
+            return 1 + min(
+                MED(S, T[1:]),
+                MED(S[1:], T),        
+                MED(S[1:], T[1:])     
+            )
 
 
 def fast_MED(S, T):
     # TODO -  implement bottom-up memoization
     # returns only the edit distance cost
-    pass
+    m = len(S)
+    n = len(T)
+
+    D = [[0 for j in range(n + 1)] for i in range(m + 1)]
+
+    for i in range(m + 1):
+        D[i][0] = i
+
+    for j in range(n + 1):
+        D[0][j] = j
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+
+            cost = 0 if S[i - 1] == T[j - 1] else 1
+
+            D[i][j] = min(
+                D[i - 1][j] + 1,          
+                D[i][j - 1] + 1,          
+                D[i - 1][j - 1] + cost
+            )
+
+    return D[m][n]
+
 
 def fast_align_MED(S, T):
     # TODO - implement bottom-up memoization, allowing
     # for traceback of alignment
     # returns the two alignments (see test_align)
-    pass
+    m = len(S)
+    n = len(T)
+
+    D = [[0 for j in range(n + 1)] for i in range(m + 1)]
+
+    for i in range(m + 1):
+        D[i][0] = i
+
+    for j in range(n + 1):
+        D[0][j] = j
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            cost = 0 if S[i - 1] == T[j - 1] else 1
+
+            D[i][j] = min(
+                D[i - 1][j] + 1,
+                D[i][j - 1] + 1,
+                D[i - 1][j - 1] + cost
+            )
+
+    align_S = []
+    align_T = []
+
+    i = m
+    j = n
+
+    while i > 0 or j > 0:
+
+        if i > 0 and D[i][j] == D[i - 1][j] + 1:
+            align_S.append(S[i - 1])
+            align_T.append("-")
+            i -= 1
+
+        elif j > 0 and D[i][j] == D[i][j - 1] + 1:
+            align_S.append("-")
+            align_T.append(T[j - 1])
+            j -= 1
+
+        else:
+            align_S.append(S[i - 1])
+            align_T.append(T[j - 1])
+            i -= 1
+            j -= 1
+
+    align_S.reverse()
+    align_T.reverse()
+
+    return ("".join(align_S), "".join(align_T))
